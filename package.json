@@ -1,0 +1,25 @@
+{
+  "name": "pcm-fullstack-separated",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CBU SDA PCM full-stack website with separated Next.js frontend and Express/Supabase backend.",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace backend\" \"npm run dev --workspace frontend\"",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "dev:backend": "npm run dev --workspace backend",
+    "install:all": "npm install --workspaces",
+    "build": "npm run build --workspace frontend",
+    "start": "concurrently \"npm run start --workspace backend\" \"npm run start --workspace frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "optionalDependencies": {
+    "lightningcss": "^1.30.2",
+    "lightningcss-win32-x64-msvc": "^1.30.2"
+  }
+}
