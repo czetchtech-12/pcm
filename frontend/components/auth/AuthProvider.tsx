@@ -41,7 +41,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const syncProfile = async (token?: string | null): Promise<UserProfile | null> => {
+  const makeFallbackProfile = (sessionUser?: User | null): UserProfile | null => {
+    if (!sessionUser?.email) return null
+    return {
+      id: sessionUser.id,
+      email: sessionUser.email,
+      name: String(sessionUser.user_metadata?.name || sessionUser.email.split('@')[0] || 'Member'),
+      role: 'student',
+      phone: sessionUser.user_metadata?.phone || null,
+      avatar_url: null,
+      created_at: sessionUser.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  }
+
+  const syncProfile = async (token?: string | null, sessionUser?: User | null): Promise<UserProfile | null> => {
     if (!token) {
       setProfile(null)
       return null
@@ -52,8 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return result.data
     } catch (error) {
       console.error('Error syncing user profile:', error)
-      setProfile(null)
-      return null
+      const fallback = makeFallbackProfile(sessionUser || user)
+      setProfile(fallback)
+      return fallback
     }
   }
 
@@ -68,7 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshProfile = async () => {
     const token = await getAccessToken()
-    return syncProfile(token)
+    const { data: { session } } = await supabase.auth.getSession()
+    return syncProfile(token, session?.user ?? null)
   }
 
   useEffect(() => {
@@ -77,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session || null)
       setUser(session?.user ?? null)
       setAccessToken(session?.access_token || null)
-      if (session?.access_token) await syncProfile(session.access_token)
+      if (session?.access_token) await syncProfile(session.access_token, session.user)
       else setProfile(null)
       setLoading(false)
     }
@@ -88,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session || null)
       setUser(session?.user ?? null)
       setAccessToken(session?.access_token || null)
-      if (session?.access_token) await syncProfile(session.access_token)
+      if (session?.access_token) await syncProfile(session.access_token, session.user)
       else setProfile(null)
       setLoading(false)
     })

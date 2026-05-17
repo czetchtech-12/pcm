@@ -22,7 +22,7 @@ export function LoginForm({ onClose }: LoginFormProps) {
   const [formData, setFormData] = useState({ email: '', password: '', name: '', phone: '' })
 
   const redirectAfterAuth = async () => {
-    const profile = await refreshProfile()
+    const profile = await refreshProfile().catch(() => null)
     const next = searchParams.get('next')
     if (next) router.push(next)
     else if (profile?.role === 'admin' || profile?.role === 'leader') router.push('/admin')
@@ -55,7 +55,9 @@ export function LoginForm({ onClose }: LoginFormProps) {
         setError('This email already has an account. Please sign in instead, or use forgot password.')
         setMode('login')
       } else if (message.toLowerCase().includes('invalid login credentials')) {
-        setError('Invalid email or password. Check your details and try again.')
+        setError('Invalid email or password. If you just confirmed your email, wait a few seconds, refresh this page, and try again.')
+      } else if (message.toLowerCase().includes('email not confirmed') || message.toLowerCase().includes('not confirmed')) {
+        setError('Your account exists but the email is not confirmed yet. Open the confirmation link from your email, then return here and sign in.')
       } else if (message.toLowerCase().includes('email rate limit')) {
         setError('Too many signup emails were requested. Please wait a few minutes and try again.')
       } else {

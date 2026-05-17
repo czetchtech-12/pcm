@@ -1,26 +1,41 @@
 import { supabase } from './supabase'
 import { api } from './api'
 
+async function trySyncProfile(token?: string | null) {
+  if (!token) return
+  try {
+    await api.me(token)
+  } catch (error) {
+    // Do not block login if the profile-sync API is temporarily unavailable.
+    // AuthProvider will try again and the member dashboard can still use Supabase session data.
+    console.warn('Profile sync skipped:', error)
+  }
+}
+
 export const signUp = async (email: string, password: string, name: string, phone?: string) => {
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: email.trim().toLowerCase(),
     password,
-    options: { data: { name, phone, role: 'student' } }
+    options: {
+      data: { name, phone, role: 'student' },
+      emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined
+    }
   })
   if (error) throw error
   if (data.session?.access_token) {
-    await api.me(data.session.access_token)
-    if (phone) await api.updateMe({ name, phone }, data.session.access_token).catch(() => null)
+    await trySyncProfile(data.session.access_token)
+    if (phone || name) await api.updateMe({ name, phone }, data.session.access_token).catch(() => null)
   }
   return data
 }
 
 export const signIn = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password
+  })
   if (error) throw error
-  if (data.session?.access_token) {
-    await api.me(data.session.access_token)
-  }
+  await trySyncProfile(data.session?.access_token)
   return data
 }
 
@@ -42,7 +57,7 @@ export const getCurrentSession = async () => {
 }
 
 export const resetPassword = async (email: string) => {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` })
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: `${window.location.origin}/login` })
   if (error) throw error
 }
 
